@@ -113,6 +113,10 @@ class Watcher:
         upload_path = os.path.join(self.task.dst, filename)
         aiter = self.client.download(file.sign, file.path)
         await self.client.upload(upload_path, aiter, overwrite=True)
+        # 如何校验成功后删除，如果误删了呢？
+        # 获取文件大小？
+        if self.task.cleanup:
+            await self.client.remove(file.path)
         log.info(f"Sync {file.name} Over")
 
     async def run(self):
