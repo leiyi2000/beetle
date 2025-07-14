@@ -17,7 +17,7 @@ from beetle.settings import (
 
 
 log = logging.getLogger(__name__)
-lock = asyncio.Semaphore(SYNCHRONIZER_COUNT)
+semaphore = asyncio.Semaphore(SYNCHRONIZER_COUNT)
 
 
 class TaskScheduler:
@@ -112,7 +112,8 @@ class Watcher:
         dir, filename = os.path.split(file.path)
         upload_path = os.path.join(self.task.dst, filename)
         aiter = self.client.download(file.sign, file.path)
-        result = await self.client.upload(upload_path, aiter, overwrite=True)
+        async with semaphore:
+            result = await self.client.upload(upload_path, aiter, overwrite=True)
         if result and self.task.cleanup:
             await self.client.remove(dir, names=[filename])
         log.info(f"Sync {file.name} Over")
