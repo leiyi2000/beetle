@@ -1,0 +1,13 @@
+services:
+  beetle-apiserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: beetle-apiserver:${IMAGE_TAG:-latest}
+    restart: always
+    environment:
+      - OPENLIST_HOST=${OPENLIST_HOST}
+      - OPENLIST_TOKEN=${OPENLIST_TOKEN}
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
+    ports:
+      - "${PORT:-8000}:8000"

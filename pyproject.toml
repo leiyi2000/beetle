@@ -1,0 +1,31 @@
+[project]
+name = "beetle"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aerich[toml]>=0.9.1",
+    "fastapi>=0.115.14",
+    "granian[reload]>=2.4.1",
+    "httpx>=0.28.1",
+    "pydantic>=2.11.7",
+    "tortoise-orm>=0.25.1",
+]
+
+[project.scripts]
+dev = "granian --interface asgi beetle.main:app"
+
+[tool.aerich]
+tortoise_orm = "beetle.settings.TORTOISE_ORM"
+location = "./migrations"
+src_folder = "./."
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.0.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "-s"
