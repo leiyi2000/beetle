@@ -10,3 +10,4 @@ wheels/
 .venv
 .python-version
 *.sqlite3*
+.env
