@@ -87,7 +87,7 @@ class Watcher:
         dirs = [path]
         replace_path = None
         while dirs:
-            response = await self.client.list(dirs.pop())
+            response = await self.client.list(dirs.pop(), refresh=True)
             for entry in response.content:
                 if replace_path is None:
                     replace_path = entry.path.removesuffix(entry.name)
@@ -97,7 +97,6 @@ class Watcher:
                     dirs.append(entry.path)
                 else:
                     files.append(entry)
-
         return files
 
     async def _diff(self) -> List[PathEntry]:
@@ -114,19 +113,24 @@ class Watcher:
     async def sync(self, file: PathEntry):
         dir, filename = os.path.split(file.path)
         upload_path = os.path.join(self.task.dst, file.path.removeprefix(self.task.src))
-        log.info(f"Sync {upload_path} Start")
         aiter = self.client.download(file.sign, file.path)
         async with semaphore:
+            log.info(f"Sync {upload_path} Start")
             result = await self.client.upload(upload_path, aiter, overwrite=True)
+
         if result and self.task.cleanup:
-            await self.client.remove(dir, names=[filename])
+            for entry in await self.client.list(dir, refresh=True):
+                if entry.name == filename and entry.size == file.size:
+                    await self.client.remove(dir, names=[filename])
+                    break
         log.info(f"Sync {upload_path} Over")
 
     async def run(self):
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
             try:
-                for file in await self._diff():
-                    await self.sync(file)
+                async with asyncio.TaskGroup() as tg:
+                    for file in await self._diff():
+                        tg.create_task(self.sync(file))
             except Exception:
                 log.error(traceback.format_exc())
             finally:
