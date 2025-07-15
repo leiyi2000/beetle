@@ -9,5 +9,8 @@ services:
       - OPENLIST_HOST=${OPENLIST_HOST}
       - OPENLIST_TOKEN=${OPENLIST_TOKEN}
       - LOG_LEVEL=${LOG_LEVEL:-WARNING}
+      - DATABASE_URL=${DATABASE_URL:-sqlite://data/beetle.sqlite3}
     ports:
       - "${PORT:-8000}:8000"
+    volumes:
+      - ./data:/app/data

@@ -99,7 +99,7 @@ class OpenListClient:
             "refresh": refresh,
         }
         response = await self._request("POST", "/api/fs/list", json=payload)
-        return ListResponse(**response.json()["data"])
+        return ListResponse.model_validate(response.json()["data"])
 
     async def _iter_file(self, filepath: str, chunk_size: int = 1024 * 1024):
         with open(filepath, "rb") as f:

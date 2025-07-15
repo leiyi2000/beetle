@@ -11,3 +11,4 @@ wheels/
 .python-version
 *.sqlite3*
 .env
+data

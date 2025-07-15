@@ -6,7 +6,7 @@ APP_NAME = "beetle"
 logging.config.dictConfig(
     {
         "version": 1,
-        "disable_existing_loggers": False,
+        "disable_existing_loggers": True,
         "formatters": {
             "generic": {
                 "()": "logging.Formatter",
@@ -29,7 +29,7 @@ logging.config.dictConfig(
 )
 
 TORTOISE_ORM = {
-    "connections": {"default": "sqlite://beetle.sqlite3"},
+    "connections": {"default": os.environ.get("DATABASE_URL", "sqlite:beetle.sqlite3")},
     "apps": {
         APP_NAME: {
             "models": ["beetle.models", "aerich.models"],

@@ -89,17 +89,14 @@ class Watcher:
         while dirs:
             response = await self.client.list(dirs.pop())
             for entry in response.content:
+                if replace_path is None:
+                    replace_path = entry.path.removesuffix(entry.name)
+                # openlist接口返回的path有点难受
+                entry.path = entry.path.replace(replace_path, path)
                 if entry.is_dir:
                     dirs.append(entry.path)
                 else:
                     files.append(entry)
-
-            if replace_path is None and len(files) > 0:
-                entry = files[-1]
-                replace_path = entry.path.removesuffix(entry.name)
-
-        for file in files:
-            file.path = file.path.replace(replace_path, path)
 
         return files
 
@@ -116,13 +113,14 @@ class Watcher:
 
     async def sync(self, file: PathEntry):
         dir, filename = os.path.split(file.path)
-        upload_path = os.path.join(self.task.dst, filename)
+        upload_path = os.path.join(self.task.dst, file.path.removeprefix(self.task.src))
+        log.info(f"Sync {upload_path} Start")
         aiter = self.client.download(file.sign, file.path)
         async with semaphore:
             result = await self.client.upload(upload_path, aiter, overwrite=True)
         if result and self.task.cleanup:
             await self.client.remove(dir, names=[filename])
-        log.info(f"Sync {file.name} Over")
+        log.info(f"Sync {upload_path} Over")
 
     async def run(self):
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
