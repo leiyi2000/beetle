@@ -40,8 +40,8 @@ class ListResponse(BaseModel):
 class OpenListClient:
     def __init__(self, host: str, token: str):
         self.host = host
+        self.client = httpx.AsyncClient()
         self._headers = {"Authorization": token}
-        self.client = httpx.AsyncClient(timeout=None)
 
     async def aclose(self):
         await self.client.aclose()
