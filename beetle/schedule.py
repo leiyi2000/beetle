@@ -30,6 +30,7 @@ class TaskScheduler:
         async with asyncio.TaskGroup() as tg:
             while not self._stop.is_set():
                 async with self.lock:
+                    task_ids = set()
                     async for task in Task.all():
                         if task.id in self.watch_tasks:
                             watcher = self.watch_tasks[task.id]
@@ -38,6 +39,11 @@ class TaskScheduler:
                             watcher = Watcher(self.lock, task, self.watch_tasks)
                             self.watch_tasks[task.id] = watcher
                             tg.create_task(watcher.run())
+                        task_ids.add(task.id)
+
+                    for task_id in self.watch_tasks.keys():
+                        if task_id not in task_ids:
+                            watcher.stop()
 
                 await asyncio.sleep(TASK_POLL_INTERVAL)
 
