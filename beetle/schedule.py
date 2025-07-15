@@ -119,7 +119,8 @@ class Watcher:
             result = await self.client.upload(upload_path, aiter, overwrite=True)
 
         if result and self.task.cleanup:
-            for entry in await self.client.list(dir, refresh=True):
+            response = await self.client.list(dir, refresh=True)
+            for entry in response.content:
                 if entry.name == filename and entry.size == file.size:
                     await self.client.remove(dir, names=[filename])
                     break
