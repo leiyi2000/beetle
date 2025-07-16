@@ -129,9 +129,8 @@ class Watcher:
     async def run(self):
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
             try:
-                async with asyncio.TaskGroup() as tg:
-                    for file in await self._diff():
-                        tg.create_task(self.sync(file))
+                tasks = [self.sync(file) for file in await self._diff()]
+                await asyncio.gather(*tasks, return_exceptions=True)
             except Exception:
                 log.error(traceback.format_exc())
             finally:
