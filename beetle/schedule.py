@@ -27,27 +27,25 @@ class TaskScheduler:
         self.watch_tasks: Dict[int, Watcher] = {}
 
     async def _run(self):
-        async with asyncio.TaskGroup() as tg:
-            while not self._stop.is_set():
-                async with self.lock:
-                    task_ids = set()
-                    async for task in Task.all():
-                        if task.id in self.watch_tasks:
-                            watcher = self.watch_tasks[task.id]
-                            watcher.task = task
-                        elif task.status == TaskStatus.running:
-                            watcher = Watcher(self.lock, task, self.watch_tasks)
-                            self.watch_tasks[task.id] = watcher
-                            tg.create_task(watcher.run())
-                        task_ids.add(task.id)
+        while not self._stop.is_set():
+            async with self.lock:
+                task_ids = set()
+                async for task in Task.all():
+                    if task.id in self.watch_tasks:
+                        watcher = self.watch_tasks[task.id]
+                        watcher.task = task
+                    elif task.status == TaskStatus.running:
+                        watcher = Watcher(self.lock, task, self.watch_tasks)
+                        self.watch_tasks[task.id] = watcher
+                        asyncio.create_task(watcher.run())
+                    task_ids.add(task.id)
 
-                    for task_id in self.watch_tasks.keys():
-                        if task_id not in task_ids:
-                            watcher.stop()
+                for task_id, watcher in self.watch_tasks.items():
+                    if task_id not in task_ids:
+                        watcher.stop()
+            await asyncio.sleep(TASK_POLL_INTERVAL)
 
-                await asyncio.sleep(TASK_POLL_INTERVAL)
-
-            self._stop_tasks()
+        self._stop_tasks()
 
     def _stop_tasks(self):
         for _, watcher in self.watch_tasks.items():
@@ -85,14 +83,11 @@ class Watcher:
     async def _get_files(self, path: str) -> List[PathEntry]:
         files = []
         dirs = [path]
-        replace_path = None
         while dirs:
-            response = await self.client.list(dirs.pop(), refresh=True)
+            current_dir = dirs.pop()
+            response = await self.client.list(current_dir, refresh=True)
             for entry in response.content:
-                if replace_path is None:
-                    replace_path = entry.path.removesuffix(entry.name)
-                # openlist接口返回的path有点难受
-                entry.path = entry.path.replace(replace_path, path)
+                entry.path = os.path.join(current_dir, entry.name)
                 if entry.is_dir:
                     dirs.append(entry.path)
                 else:

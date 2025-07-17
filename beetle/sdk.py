@@ -140,6 +140,4 @@ class OpenListClient:
         url = f"{self.host}/d{filepath}?sign={sign}"
         async with self.client.stream("GET", url, follow_redirects=True) as response:
             async for chunk in response.aiter_bytes():
-                if chunk.startswith(b'{"code"'):
-                    raise RuntimeError(f"Download failed: {chunk}")
                 yield chunk
