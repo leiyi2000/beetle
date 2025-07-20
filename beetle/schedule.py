@@ -94,37 +94,48 @@ class Watcher:
                     files.append(entry)
         return files
 
-    async def _diff(self) -> List[PathEntry]:
-        src_files = await self._get_files(self.task.src)
-        dst_files = await self._get_files(self.task.dst)
-        map = {file.path.removeprefix(self.task.dst): file for file in dst_files}
+    async def _diff(self, src_path: str, dst_path: str) -> List[PathEntry]:
+        src_files = await self._get_files(src_path)
+        dst_files = await self._get_files(dst_path)
+        map = {file.path.removeprefix(dst_path): file for file in dst_files}
         sync_files = []
         for file in src_files:
-            path = file.path.removeprefix(self.task.src)
+            path = file.path.removeprefix(src_path)
             if path not in map or map[path].size != file.size:
                 sync_files.append(file)
         return sync_files
 
-    async def sync(self, file: PathEntry):
+    async def clean(self, src_path: str, file: PathEntry):
+        src_path = src_path.rstrip("/")
+        remove = [os.path.split(file.path)]
+        while remove:
+            path, name = remove.pop()
+            await self.client.remove(path, names=[name])
+            response = await self.client.list(path, refresh=True)
+            if len(response.content) == 0:
+                parent_path, name = os.path.split(path)
+                if name and parent_path.startswith(src_path):
+                    remove.append((parent_path, name))
+
+    async def sync(self, src_path: str, dst_path: str, file: PathEntry):
         dir, filename = os.path.split(file.path)
-        upload_path = os.path.join(self.task.dst, file.path.removeprefix(self.task.src))
+        upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
         aiter = self.client.download(file.sign, file.path)
         async with semaphore:
             log.info(f"Sync {upload_path} Start")
             result = await self.client.upload(upload_path, aiter, overwrite=True)
 
         if result and self.task.cleanup:
-            response = await self.client.list(dir, refresh=True)
-            for entry in response.content:
-                if entry.name == filename and entry.size == file.size:
-                    await self.client.remove(dir, names=[filename])
-                    break
+            await self.clean(src_path, file)
+
         log.info(f"Sync {upload_path} Over")
 
     async def run(self):
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
+            src_path = self.task.src
+            dst_path = self.task.dst
             try:
-                tasks = [self.sync(file) for file in await self._diff()]
+                tasks = [self.sync(src_path, dst_path, file) for file in await self._diff(src_path, dst_path)]
                 await asyncio.gather(*tasks, return_exceptions=True)
             except Exception:
                 log.error(traceback.format_exc())
