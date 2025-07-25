@@ -131,9 +131,10 @@ class Watcher:
         log.info(f"Sync {upload_path} Over")
 
     async def run(self):
+        task_id = self.task.id
+        src_path = self.task.src
+        dst_path = self.task.dst
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
-            src_path = self.task.src
-            dst_path = self.task.dst
             try:
                 tasks = [self.sync(src_path, dst_path, file) for file in await self._diff(src_path, dst_path)]
                 await asyncio.gather(*tasks, return_exceptions=True)
@@ -143,7 +144,7 @@ class Watcher:
                 await asyncio.sleep(self.task.interval)
 
         async with self.lock:
-            if self.task.id in self.watch_tasks:
-                self.watch_tasks.pop(self.task.id)
+            if task_id in self.watch_tasks:
+                self.watch_tasks.pop(task_id)
 
         await self.client.aclose()
