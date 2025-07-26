@@ -117,7 +117,13 @@ class Watcher:
                 if name and parent_path.startswith(src_path):
                     remove.append((parent_path, name))
 
-    async def sync(self, src_path: str, dst_path: str, file: PathEntry):
+    async def sync(
+        self,
+        src_path: str,
+        dst_path: str,
+        file: PathEntry,
+        cleanup: bool,
+    ):
         dir, filename = os.path.split(file.path)
         upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
         aiter = self.client.download(file.sign, file.path)
@@ -125,7 +131,7 @@ class Watcher:
             log.info(f"Sync {upload_path} Start")
             result = await self.client.upload(upload_path, aiter, overwrite=True)
 
-        if result and self.task.cleanup:
+        if cleanup and result:
             await self.clean(src_path, file)
 
         log.info(f"Sync {upload_path} Over")
@@ -134,9 +140,13 @@ class Watcher:
         task_id = self.task.id
         src_path = self.task.src
         dst_path = self.task.dst
+        cleanup = self.task.cleanup
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
             try:
-                tasks = [self.sync(src_path, dst_path, file) for file in await self._diff(src_path, dst_path)]
+                tasks = [
+                    self.sync(src_path, dst_path, file, cleanup)
+                    for file in await self._diff(src_path, dst_path)
+                ]
                 await asyncio.gather(*tasks, return_exceptions=True)
             except Exception:
                 log.error(traceback.format_exc())

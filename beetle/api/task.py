@@ -34,7 +34,7 @@ async def update(
     id: int = Body(),
     src: str = Body(),
     dst: str = Body(),
-    interval: int = Body(le=60),
+    interval: int = Body(ge=300),
     cleanup: bool = Body(),
     status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(),
 ):
