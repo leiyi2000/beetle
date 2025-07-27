@@ -112,7 +112,8 @@ class Watcher:
             path, name = remove.pop()
             await self.client.remove(path, names=[name])
             response = await self.client.list(path, refresh=True)
-            if len(response.content) == 0:
+
+            if len(response.content) == 0 and src_path:
                 parent_path, name = os.path.split(path)
                 if name and parent_path.startswith(src_path):
                     remove.append((parent_path, name))
