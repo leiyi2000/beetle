@@ -13,8 +13,9 @@ router = APIRouter()
 async def create(
     src: str = Body(),
     dst: str = Body(),
-    interval: int = Body(ge=300),
     cleanup: bool = Body(),
+    interval: int = Body(ge=300),
+    status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(default=TaskStatus.running),
 ):
     task = await Task.filter(src=src, dst=dst).first()
     if task:
@@ -24,7 +25,7 @@ async def create(
         dst=dst,
         interval=interval,
         cleanup=cleanup,
-        status=TaskStatus.running,
+        status=status,
     )
     return task
 
