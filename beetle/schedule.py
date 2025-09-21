@@ -125,7 +125,6 @@ class Watcher:
         file: PathEntry,
         cleanup: bool,
     ):
-        dir, filename = os.path.split(file.path)
         upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
         aiter = self.client.download(file.sign, file.path)
         async with semaphore:

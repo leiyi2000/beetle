@@ -10,6 +10,8 @@ Beetle 是一个基于 FastAPI 和 Tortoise ORM 构建的文件同步工具，�
 - 多任务并行处理
 - Docker 容器化部署
 
+![alt text](./docs/image.png)
+
 ## 技术栈
 
 - Python 3.13+
@@ -112,9 +114,6 @@ beetle/
 ├── sdk.py          # OpenList API 客户端
 └── settings.py     # 应用配置
 ```
-
-## TODO
-- web 
 
 ## 许可证
 

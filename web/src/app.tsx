@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useEffect } from 'react'
 import '@ant-design/v5-patch-for-react-19'
-import type { TreeSelectProps } from 'antd'
+import { message, type TreeSelectProps } from 'antd'
 import { DoubleRightOutlined } from '@ant-design/icons'
 import { TreeSelect, Button, Radio, InputNumber, Modal } from 'antd'
 
@@ -16,9 +16,8 @@ type TreeNode = {
   isLeaf?: boolean
   disabled?: boolean
 }
-function Tree(props: { dir: string }) {
-  const { dir } = props
-  const [value, setValue] = useState<string>(dir)
+function Tree(props: { dir: string; updateDir: (value: string) => void }) {
+  const { dir, updateDir } = props
   const [treeData, setTreeData] = useState<TreeNode[]>([])
 
   useEffect(() => {
@@ -54,11 +53,15 @@ function Tree(props: { dir: string }) {
   }
 
   return (
-    <div className="h-10 w-100">
+    <div className="h-8 w-100">
       <TreeSelect
-        value={value}
-        onChange={(new_value) => {
-          setValue(new_value)
+        value={dir}
+        onChange={(value) => {
+          let dir = value;
+          if (dir && !dir.endsWith("/")) {
+            dir += "/";
+          }
+          updateDir(dir)
         }}
         treeData={treeData}
         loadData={onLoadData}
@@ -72,27 +75,45 @@ function Tree(props: { dir: string }) {
 
 function TaskCard(props: {
   task: TaskType
-  onRunningChange: (isRunning: boolean) => void
   onCleanupChange: (cleanup: boolean) => void
   onIntervalChange: (interval: number) => void
+  onRunningChange: (isRunning: boolean) => void
+  setTasks: React.Dispatch<React.SetStateAction<TaskType[]>>
 }) {
-  const { task, onRunningChange, onCleanupChange, onIntervalChange } = props
+  const { task, setTasks, onRunningChange, onCleanupChange, onIntervalChange } =
+    props
+  const [loading, setLoading] = useState<boolean>(false)
+
+  const handleRemove = async () => {
+    setLoading(true)
+    await Task.remove(task.id)
+    setTasks((prev) => prev.filter((t) => t.id !== task.id))
+    setLoading(false)
+  }
+
+  const handleUpdateSrc = (src: string) => {
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, src } : t)))
+  }
+
+  const handleUpdateDst = (dst: string) => {
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, dst } : t)))
+  }
 
   return (
     <div className="flex flex-col space-y-3 rounded-xl border border-gray-200 bg-white px-8 py-3 shadow-sm transition-shadow duration-200 hover:shadow-md">
-      <div className="flex min-h-12 flex-row items-center justify-between gap-5">
-        <Tree dir={task.src} />
+      <div className="flex min-h-10 flex-row items-center justify-between gap-5">
+        <Tree {...{ dir: task.src, updateDir: handleUpdateSrc }} />
         <div className="flex items-center">
           <DoubleRightOutlined
             className="text-blue-600"
             style={{ fontSize: 16 }}
           />
         </div>
-        <Tree dir={task.dst} />
+        <Tree {...{ dir: task.dst, updateDir: handleUpdateDst }} />
       </div>
-      
+
       <hr className="my-2 w-full border-t border-gray-200" />
-      
+
       <div className="flex flex-row justify-between gap-5">
         <div className="flex flex-col gap-2">
           <div className="flex text-sm font-medium text-gray-700">
@@ -161,26 +182,73 @@ function TaskCard(props: {
       <div className="flex h-12 flex-row items-end justify-end gap-8">
         <Button
           type="primary"
+          loading={loading}
           onClick={() => {
             Modal.confirm({
               title: '确认删除吗？',
               okText: '确认',
+              cancelText: '取消',
               okType: 'danger',
               onOk: () => {
-                console.log('删除')
+                handleRemove()
               },
             })
           }}
         >
           删除
         </Button>
-        <Button type="primary">保存</Button>
+        <Button
+          type="primary"
+          onClick={async () => {
+            if (!task.src || !task.dst) {
+              message.error('路径不允许为空')
+              return
+            }
+            if (task._create == true) {
+              const response = await Task.create({
+                src: task.src,
+                dst: task.dst,
+                cleanup: task.cleanup,
+                interval: task.interval,
+                status: task.status,
+              })
+              if ('error' in response) {
+                message.error('任务已存在')
+                return
+              }
+              setTasks((prev) =>
+                prev.map((t) => (t.id === task.id ? response : t))
+              )
+              message.success('创建成功')
+              return
+            }
+            const rows = await Task.update({
+              id: task.id,
+              src: task.src,
+              dst: task.dst,
+              cleanup: task.cleanup,
+              interval: task.interval,
+              status: task.status,
+            })
+            if (rows == 1) {
+              message.success('成功保存')
+            } else {
+              message.error('保存失败')
+            }
+          }}
+        >
+          保存
+        </Button>
       </div>
     </div>
   )
 }
 
-function TopNav() {
+function TopNav(props: {
+  setTasks: React.Dispatch<React.SetStateAction<TaskType[]>>
+}) {
+  const { setTasks } = props
+
   return (
     <div className="border-b border-gray-200 bg-white shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -192,6 +260,24 @@ function TopNav() {
             type="primary"
             size="large"
             className="border-blue-600 bg-blue-600 shadow-sm hover:border-blue-700 hover:bg-blue-700"
+            onClick={() => {
+              setTasks((prv) => {
+                return [
+                  ...prv,
+                  {
+                    id: Date.now(),
+                    src: '',
+                    dst: '',
+                    cleanup: false,
+                    interval: 60 * 60 * 8,
+                    status: 'running',
+                    created_at: '',
+                    updated_at: '',
+                    _create: true,
+                  },
+                ]
+              })
+            }}
           >
             新增任务
           </Button>
@@ -237,11 +323,12 @@ function App() {
   }
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <TopNav />
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex min-w-250 flex-row justify-center gap-4">
+      <TopNav setTasks={setTasks} />
+      <div className="mx-auto flex max-w-7xl justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex w-200 min-w-100 flex-col gap-4">
           {tasks.map((task) => (
             <TaskCard
+              setTasks={setTasks}
               key={task.id}
               task={task}
               onRunningChange={(isRunning) =>

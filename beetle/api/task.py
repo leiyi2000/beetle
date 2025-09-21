@@ -15,7 +15,7 @@ async def create(
     dst: str = Body(),
     cleanup: bool = Body(),
     interval: int = Body(ge=300),
-    status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(default=TaskStatus.running),
+    status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(default=TaskStatus.running), # type: ignore
 ):
     task = await Task.filter(src=src, dst=dst).first()
     if task:
@@ -37,7 +37,7 @@ async def update(
     dst: str = Body(),
     interval: int = Body(ge=300),
     cleanup: bool = Body(),
-    status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(),
+    status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(), # type: ignore
 ):
     rows = await Task.filter(id=id).update(
         src=src,
