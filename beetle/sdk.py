@@ -59,8 +59,8 @@ class OpenListClient:
         *,
         json: dict | None = None,
         headers: dict | None = None,
-        content = None,
-        data = None,
+        content=None,
+        data=None,
     ) -> httpx.Response:
         url = f"{self.host}{path}"
         if headers:
@@ -113,7 +113,7 @@ class OpenListClient:
         overwrite: bool = False,
     ) -> bool:
         headers = {
-            "file-path": urllib.parse.quote(filepath, safe='/'),
+            "file-path": urllib.parse.quote(filepath, safe="/"),
             "overwrite": "true" if overwrite else "false",
         }
         response = await self._request(

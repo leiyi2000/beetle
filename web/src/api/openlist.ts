@@ -46,4 +46,3 @@ async function list(params: ListParams): Promise<OpenListType[]> {
 export const OpenList = {
   list,
 }
-
