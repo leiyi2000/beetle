@@ -126,8 +126,8 @@ class Watcher:
         cleanup: bool,
     ):
         upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
-        aiter = self.client.download(file.sign, file.path)
         async with semaphore:
+            aiter = self.client.download(file.sign, file.path)
             log.info(f"Sync {upload_path} Start")
             result = await self.client.upload(upload_path, aiter, overwrite=True)
 
