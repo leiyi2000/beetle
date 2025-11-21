@@ -15,6 +15,7 @@ async def create(
     dst: str = Body(),
     cleanup: bool = Body(),
     interval: int = Body(ge=300),
+    parallel_max: int = Body(default=5),
     status: Literal[TaskStatus.running, TaskStatus.stopped] = Body(default=TaskStatus.running), # type: ignore
 ):
     task = await Task.filter(src=src, dst=dst).first()
@@ -23,9 +24,10 @@ async def create(
     task = await Task.create(
         src=src,
         dst=dst,
-        interval=interval,
-        cleanup=cleanup,
         status=status,
+        cleanup=cleanup,
+        interval=interval,
+        parallel_max=parallel_max,
     )
     return task
 

@@ -99,7 +99,11 @@ class OpenListClient:
             "refresh": refresh,
         }
         response = await self._request("POST", "/api/fs/list", json=payload)
-        return ListResponse.model_validate(response.json()["data"])
+        try:
+            return ListResponse.model_validate(response.json()["data"])
+        except ValueError as e:
+            log.error(f"parse error {path} {response.text}")
+            raise e
 
     async def _iter_file(self, filepath: str, chunk_size: int = 1024 * 1024):
         with open(filepath, "rb") as f:

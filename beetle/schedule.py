@@ -106,7 +106,18 @@ class Watcher:
         sync_files.sort(key=lambda x: x.path)
         return sync_files
 
-    async def clean(self, src_path: str, file: PathEntry):
+    async def clean(self, upload_path: str, src_path: str, file: PathEntry):
+        ignore = True
+        path, name = os.path.split(upload_path)
+        response = await self.client.list(path)
+        for tfile in response.content:
+            if tfile.name == name and tfile.size == file.size:
+                ignore = False
+                break
+
+        if ignore:
+            return
+
         src_path = src_path.rstrip("/")
         remove = [os.path.split(file.path)]
         while remove:
@@ -134,7 +145,7 @@ class Watcher:
             result = await self.client.upload(upload_path, aiter, overwrite=True)
 
         if cleanup and result:
-            await self.clean(src_path, file)
+            await self.clean(upload_path, src_path, file)
 
         log.info(f"Sync {upload_path} Over")
 
