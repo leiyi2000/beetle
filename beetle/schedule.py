@@ -1,23 +1,22 @@
 from typing import Dict, List
 
 import os
+import time
 import logging
 import asyncio
 import traceback
 
 from beetle.models import Task
 from beetle.constants import TaskStatus
-from beetle.sdk import OpenListClient, PathEntry
+from beetle.client import OpenListClient, PathEntry
 from beetle.settings import (
     OPENLIST_HOST,
     OPENLIST_TOKEN,
-    SYNCHRONIZER_COUNT,
     TASK_POLL_INTERVAL,
 )
 
 
 log = logging.getLogger(__name__)
-semaphore = asyncio.Semaphore(SYNCHRONIZER_COUNT)
 
 
 class TaskScheduler:
@@ -103,6 +102,8 @@ class Watcher:
             path = file.path.removeprefix(src_path)
             if path not in map or map[path].size != file.size:
                 sync_files.append(file)
+
+        sync_files.sort()
         return sync_files
 
     async def clean(self, src_path: str, file: PathEntry):
@@ -124,6 +125,7 @@ class Watcher:
         dst_path: str,
         file: PathEntry,
         cleanup: bool,
+        semaphore: asyncio.Semaphore,
     ):
         upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
         async with semaphore:
@@ -137,21 +139,26 @@ class Watcher:
         log.info(f"Sync {upload_path} Over")
 
     async def run(self):
-        task_id = self.task.id
-        src_path = self.task.src
-        dst_path = self.task.dst
-        cleanup = self.task.cleanup
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
+            strart_time = time.time()
+            task_id = self.task.id
+            src_path = self.task.src
+            dst_path = self.task.dst
+            cleanup = self.task.cleanup
+            interval = self.task.interval
+            semaphore = asyncio.Semaphore(self.task.parallel_max)
+
             try:
                 tasks = [
-                    self.sync(src_path, dst_path, file, cleanup)
+                    self.sync(src_path, dst_path, file, cleanup, semaphore)
                     for file in await self._diff(src_path, dst_path)
                 ]
                 await asyncio.gather(*tasks, return_exceptions=True)
             except Exception:
                 log.error(traceback.format_exc())
             finally:
-                await asyncio.sleep(self.task.interval)
+                interval -= int(time.time() - strart_time)
+                await asyncio.sleep(max(0, interval))
 
         async with self.lock:
             if task_id in self.watch_tasks:

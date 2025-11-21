@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from beetle.sdk import OpenListClient
+from beetle.client import OpenListClient
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import os
 import logging
+import logging.config
 
-APP_NAME = "beetle"
 
 logging.config.dictConfig(
     {
@@ -10,8 +10,8 @@ logging.config.dictConfig(
         "formatters": {
             "generic": {
                 "()": "logging.Formatter",
-                "fmt": "[%(levelname)s] %(pathname)s:%(lineno)d - %(message)s",
-                "datefmt": "[%Y-%m-%d %H:%M:%S %z]",
+                "fmt": "[%(levelname)s] %(asctime)s %(filename)s:%(lineno)d - %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
             },
         },
         "handlers": {
@@ -25,8 +25,13 @@ logging.config.dictConfig(
             "level": "INFO",
             "handlers": ["console"],
         },
+        "loggers": {
+            "httpx": {"handlers": [], "level": "CRITICAL", "propagate": False},
+        },
     }
 )
+
+APP_NAME = "beetle"
 
 TORTOISE_ORM = {
     "connections": {"default": os.environ.get("DATABASE_URL", "sqlite:beetle.sqlite3")},
@@ -39,7 +44,6 @@ TORTOISE_ORM = {
     "timezone": "Asia/Shanghai",
 }
 
-SYNCHRONIZER_COUNT = 5
 TASK_POLL_INTERVAL = 60
 OPENLIST_HOST = os.environ["OPENLIST_HOST"]
 OPENLIST_TOKEN = os.environ["OPENLIST_TOKEN"]

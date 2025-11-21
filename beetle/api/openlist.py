@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body
 
-from beetle.sdk import OpenListClient
+from beetle.client import OpenListClient
 from beetle.settings import OPENLIST_HOST, OPENLIST_TOKEN
 
 

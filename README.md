@@ -59,7 +59,7 @@ Beetle 是一个基于 FastAPI 和 Tortoise ORM 构建的文件同步工具，�
 
   ```bash
   # 后端
-  uv run granian --access-log --host 0.0.0.0 --port ${PORT:-8000} --interface asgi beetle.main:app
+  uv run --env-file .env granian --access-log --host 0.0.0.0 --port ${PORT:-8000} --interface asgi beetle.main:app
   # 前端
   cd web
   npm run dev
