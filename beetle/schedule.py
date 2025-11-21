@@ -103,7 +103,7 @@ class Watcher:
             if path not in map or map[path].size != file.size:
                 sync_files.append(file)
 
-        sync_files.sort()
+        sync_files.sort(key=lambda x: x.path)
         return sync_files
 
     async def clean(self, src_path: str, file: PathEntry):
