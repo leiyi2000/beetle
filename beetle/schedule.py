@@ -139,15 +139,18 @@ class Watcher:
         semaphore: asyncio.Semaphore,
     ):
         upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
-        async with semaphore:
-            aiter = self.client.download(file.sign, file.path)
-            log.info(f"Sync {upload_path} Start")
-            result = await self.client.upload(upload_path, aiter, overwrite=True)
+        try:
+            async with semaphore:
+                aiter = self.client.download(file.sign, file.path)
+                log.info(f"Sync {upload_path} Start")
+                result = await self.client.upload(upload_path, aiter, overwrite=True)
 
-        if cleanup and result:
-            await self.clean(upload_path, src_path, file)
+            if cleanup and result:
+                await self.clean(upload_path, src_path, file)
 
-        log.info(f"Sync {upload_path} Over")
+            log.info(f"Sync {upload_path} Over")
+        except Exception:
+            log.error(traceback.format_exc())
 
     async def run(self):
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
@@ -159,17 +162,13 @@ class Watcher:
             interval = self.task.interval
             semaphore = asyncio.Semaphore(self.task.parallel_max)
 
-            try:
-                tasks = [
-                    self.sync(src_path, dst_path, file, cleanup, semaphore)
-                    for file in await self._diff(src_path, dst_path)
-                ]
-                await asyncio.gather(*tasks, return_exceptions=True)
-            except Exception:
-                log.error(traceback.format_exc())
-            finally:
-                interval -= int(time.time() - strart_time)
-                await asyncio.sleep(max(0, interval))
+            tasks = [
+                self.sync(src_path, dst_path, file, cleanup, semaphore)
+                for file in await self._diff(src_path, dst_path)
+            ]
+            await asyncio.gather(*tasks, return_exceptions=True)
+            interval -= int(time.time() - strart_time)
+            await asyncio.sleep(max(0, interval))
 
         async with self.lock:
             if task_id in self.watch_tasks:
