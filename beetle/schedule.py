@@ -139,36 +139,36 @@ class Watcher:
         semaphore: asyncio.Semaphore,
     ):
         upload_path = os.path.join(dst_path, file.path.removeprefix(src_path))
-        try:
-            async with semaphore:
-                aiter = self.client.download(file.sign, file.path)
-                log.info(f"Sync {upload_path} Start")
-                result = await self.client.upload(upload_path, aiter, overwrite=True)
+        async with semaphore:
+            aiter = self.client.download(file.sign, file.path)
+            log.info(f"Sync {upload_path} Start")
+            result = await self.client.upload(upload_path, aiter, overwrite=True)
 
-            if cleanup and result:
-                await self.clean(upload_path, src_path, file)
+        if cleanup and result:
+            await self.clean(upload_path, src_path, file)
 
-            log.info(f"Sync {upload_path} Over")
-        except Exception:
-            log.error(traceback.format_exc())
+        log.info(f"Sync {upload_path} Over")
 
     async def run(self):
         while not self._stop.is_set() and self.task.status == TaskStatus.running:
-            strart_time = time.time()
-            task_id = self.task.id
-            src_path = self.task.src
-            dst_path = self.task.dst
-            cleanup = self.task.cleanup
-            interval = self.task.interval
-            semaphore = asyncio.Semaphore(self.task.parallel_max)
+            try:
+                start_time = time.time()
+                task_id = self.task.id
+                src_path = self.task.src
+                dst_path = self.task.dst
+                cleanup = self.task.cleanup
+                interval = self.task.interval
+                semaphore = asyncio.Semaphore(self.task.parallel_max)
 
-            tasks = [
-                self.sync(src_path, dst_path, file, cleanup, semaphore)
-                for file in await self._diff(src_path, dst_path)
-            ]
-            await asyncio.gather(*tasks, return_exceptions=True)
-            interval -= int(time.time() - strart_time)
-            await asyncio.sleep(max(0, interval))
+                tasks = [
+                    self.sync(src_path, dst_path, file, cleanup, semaphore)
+                    for file in await self._diff(src_path, dst_path)
+                ]
+                await asyncio.gather(*tasks, return_exceptions=True)
+                interval -= int(time.time() - start_time)
+                await asyncio.sleep(max(0, interval))
+            except Exception:
+                log.error(traceback.format_exc())
 
         async with self.lock:
             if task_id in self.watch_tasks:
